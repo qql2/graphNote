@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MindMap Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/@antv/x6@2.x/dist/x6.js"></script>
+    <style>
+      #container {
+        width: 100%;
+        height: 100vh;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <script>
+      // 初始化图形
+      const graph = new X6.Graph({
+        container: document.getElementById("container"),
+        grid: true,
+        autoResize: true,
+        connecting: {
+          snap: true,
+          allowBlank: false,
+          allowLoop: true,
+          highlight: true,
+        },
+      });
+
+      // 与Flutter通信的接口
+      function handleFlutterMessage(message) {
+        const data = JSON.parse(message);
+        switch (data.type) {
+          case "addNode":
+            addNode(data.payload);
+            break;
+          case "addEdge":
+            addEdge(data.payload);
+            break;
+          // ... 其他操作
+        }
+      }
+
+      // 添加节点
+      function addNode(nodeData) {
+        const node = graph.addNode({
+          id: nodeData.id,
+          x: nodeData.x,
+          y: nodeData.y,
+          width: nodeData.width || 100,
+          height: nodeData.height || 40,
+          label: nodeData.label,
+          attrs: {
+            body: {
+              fill: "#fff",
+              stroke: "#8f8f8f",
+              strokeWidth: 1,
+            },
+          },
+        });
+
+        // 通知Flutter节点已添加
+        window.flutter_inappwebview.callHandler("onNodeAdded", {
+          id: node.id,
+          position: node.getPosition(),
+        });
+      }
+
+      // 添加边
+      function addEdge(edgeData) {
+        const edge = graph.addEdge({
+          source: edgeData.source,
+          target: edgeData.target,
+          attrs: {
+            line: {
+              stroke: "#8f8f8f",
+              strokeWidth: 1,
+            },
+          },
+        });
+
+        // 通知Flutter边已添加
+        window.flutter_inappwebview.callHandler("onEdgeAdded", {
+          id: edge.id,
+          source: edge.getSource(),
+          target: edge.getTarget(),
+        });
+      }
+
+      // 监听图形事件
+      graph.on("node:moved", ({ node }) => {
+        window.flutter_inappwebview.callHandler("onNodeMoved", {
+          id: node.id,
+          position: node.getPosition(),
+        });
+      });
+    </script>
+  </body>
+</html>

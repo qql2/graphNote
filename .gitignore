@@ -1,0 +1,26 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 本地配置
+*.env
+*.log
+
+# 数据库文件
+*.db
+graph.db/
+
+# macOS
+.DS_Store
+
+# 依赖缓存
+.pub-cache/ 
