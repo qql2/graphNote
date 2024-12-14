@@ -9,34 +9,34 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  
+
   # 图数据库
   # 暂时注释掉 Neo4j，后续需要找到合适的图数据库实现
   # neo4j_dart: ^1.0.0
-  
+
   # 图形界面
   # 由于 antv_x6 没有 Flutter 版本，我们可以使用其他图形库
-  graphview: ^1.2.0  # 用于绘制图形
-  
+  graphview: ^1.2.0 # 用于绘制图形
+
   # 状态管理
   provider: ^6.0.0
-  
+
   # 存储
   path_provider: ^2.0.0
   shared_preferences: ^2.0.0
-  
+
   # 同步
-  dio: ^5.0.0  # 用于网络请求
+  dio: ^5.0.0 # 用于网络请求
   webdav_client: ^1.2.0
-  
+
   # 工具
   json_annotation: ^4.8.1
   logging: ^1.2.0
-  
+
   # WebView
-  webview_flutter: ^4.4.2  # 移动端支持
-  webview_flutter_web: ^0.2.2+3  # Web平台支持
-  webview_windows: ^0.3.0  # Windows平台支持
+  webview_flutter: ^4.4.2 # 移动端支持
+  webview_flutter_web: ^0.2.2+3 # Web平台支持
+  webview_windows: ^0.3.0 # Windows平台支持
   js: ^0.6.7
 
 dev_dependencies:
@@ -50,3 +50,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/web/graph.html
+    - assets/web/dist/x6_graph.iife.js
+
+scripts:
+  pre_build: cd assets/web && npm run build -- --minify

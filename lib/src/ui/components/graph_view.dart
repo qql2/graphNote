@@ -28,8 +28,7 @@ class GraphViewState extends State<GraphView> {
 
   void _initWebView() async {
     if (kIsWeb) {
-      // Web平台暂不支持
-      print('Web platform is not supported yet');
+      print('web');
     } else if (Platform.isWindows) {
       _isWindows = true;
       await _initWindowsWebView();
