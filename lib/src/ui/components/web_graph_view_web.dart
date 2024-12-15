@@ -45,23 +45,26 @@ class _WebGraphViewState extends State<WebGraphView> {
           .then((String jsContent) {
         print('Graph logic loaded, length: ${jsContent.length}');
         _injectScript(jsContent);
-        _setupGraph(containerId);
       });
 
       return div;
     });
 
-    // 等待 DOM 更新后初始化图形
-    html.window.onLoad.listen((_) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (html.document.getElementById(containerId) != null) {
-          print('Container found, setting up graph...');
-          _setupGraph(containerId);
-        } else {
-          print('Container not found: $containerId');
-        }
-      });
+    // 使用 MutationObserver 监听 div 的挂载
+    final observer = html.MutationObserver((mutations, observer) {
+      if (html.document.getElementById(containerId) != null) {
+        print('Container mounted, setting up graph...');
+        _setupGraph(containerId);
+        observer.disconnect(); // 停止监听
+      }
     });
+
+    // 开始监听 document.body 的子节点变化
+    observer.observe(
+      html.document.body!,
+      childList: true,
+      subtree: true,
+    );
   }
 
   Future<void> _loadScript(String src) {

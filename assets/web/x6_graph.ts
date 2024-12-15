@@ -2,6 +2,7 @@ import { Graph, Node } from "@antv/x6";
 
 declare global {
   interface Window {
+    handleFlutterMessage: (message: string) => void;
     onNodeMoved?: (data: {
       id: string;
       position: { x: number; y: number };
@@ -9,6 +10,11 @@ declare global {
     initGraph: (containerId: string) => void;
     addNode: (nodeData: NodeData) => any;
     addEdge: (edgeData: EdgeData) => any;
+    chrome?: {
+      webview: {
+        postMessage: (message: string) => void;
+      };
+    };
   }
 }
 
@@ -29,12 +35,55 @@ interface EdgeData {
   target: string;
 }
 
+// 自定义日志函数，将日志发送到 Flutter
+function log(type: "error" | "info" | "warn", ...args: any[]) {
+  const message = {
+    type: type,
+    payload: args
+      .map((arg) =>
+        typeof arg === "object" ? JSON.stringify(arg) : String(arg)
+      )
+      .join(" "),
+  };
+  if (window.chrome?.webview) {
+    window.chrome.webview.postMessage(JSON.stringify(message));
+  } else {
+    if (type === "error") {
+      console.error(...args);
+    } else if (type === "info") {
+      console.log(...args);
+    } else if (type === "warn") {
+      console.warn(...args);
+    }
+  }
+}
+
 window.initGraph = function (containerId: string): void {
-  console.log("initGraph", containerId);
-  console.log("container element:", document.getElementById(containerId));
+  log("info", "initGraph", containerId);
   try {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      throw new Error(`Container ${containerId} not found`);
+    }
+    log(
+      "info",
+      "Container size:",
+      container.clientWidth,
+      container.clientHeight
+    );
+
     graph = new Graph({
-      container: document.getElementById(containerId)!,
+      container,
+      width: container.clientWidth,
+      height: container.clientHeight,
+      translating: { restrict: false },
+      selecting: {
+        enabled: true,
+        multiple: true,
+        rubberband: true,
+        movable: true,
+        showNodeSelectionBox: true,
+      },
       grid: {
         visible: true,
         type: "dot",
@@ -42,6 +91,13 @@ window.initGraph = function (containerId: string): void {
         args: {
           color: "#E2E2E2",
         },
+      },
+      resizing: {
+        enabled: true,
+        autoScroll: true,
+      },
+      background: {
+        color: "#ffffff",
       },
       connecting: {
         snap: true,
@@ -70,6 +126,11 @@ window.initGraph = function (containerId: string): void {
         modifiers: ["ctrl", "meta"],
       },
     });
+
+    window.addEventListener("resize", () => {
+      graph?.resize(container.clientWidth, container.clientHeight);
+    });
+
     graph.on(
       "node:moved",
       ({ node, x, y }: { node: Node; x: number; y: number }) => {
@@ -79,9 +140,9 @@ window.initGraph = function (containerId: string): void {
         });
       }
     );
-    console.log("Graph initialized successfully:", graph);
+    log("info", "Graph initialized successfully");
   } catch (error) {
-    console.error("Failed to initialize graph:", error);
+    log("error", "Failed to initialize graph:", error);
   }
 
   // 监听图形事件
@@ -89,12 +150,11 @@ window.initGraph = function (containerId: string): void {
 
 // 添加节点
 window.addNode = function (nodeData: NodeData) {
-  console.log("addNode", nodeData);
+  log("info", "Adding node:", nodeData.id);
   if (!graph) {
-    console.error("Graph not initialized");
+    log("error", "Error: Graph not initialized");
     return null;
   }
-
   const node = graph.addNode({
     id: nodeData.id,
     x: nodeData.x,
@@ -102,6 +162,7 @@ window.addNode = function (nodeData: NodeData) {
     width: nodeData.width || 100,
     height: nodeData.height || 40,
     label: nodeData.label,
+    shape: "rect",
     attrs: {
       body: {
         fill: "#fff",
@@ -109,16 +170,22 @@ window.addNode = function (nodeData: NodeData) {
         strokeWidth: 1,
         rx: 6,
         ry: 6,
+        magnet: true,
       },
       label: {
         fill: "#333",
         fontSize: 14,
         fontFamily: "Arial, helvetica, sans-serif",
+        textWrap: {
+          width: -10,
+          height: -10,
+          ellipsis: true,
+        },
       },
     },
   });
 
-  console.log("Node added:", node);
+  log("info", "Node added successfully:", nodeData.id);
   return {
     id: node.id,
     position: node.position(),
@@ -161,6 +228,35 @@ window.addEdge = function (edgeData: EdgeData) {
     source: edge.getSource(),
     target: edge.getTarget(),
   };
+};
+
+// 处理来自 Flutter 的消息
+window.handleFlutterMessage = function (message: string): void {
+  try {
+    const data = JSON.parse(message);
+    log("info", "Received message:", data.type);
+
+    switch (data.type) {
+      case "addNode":
+        if (!graph) {
+          throw new Error("Graph not initialized when adding node");
+        }
+        window.addNode(data.payload);
+        break;
+      case "addEdge":
+        if (!graph) {
+          throw new Error("Graph not initialized when adding edge");
+        }
+        window.addEdge(data.payload);
+        break;
+      default:
+        throw new Error(`Unknown message type: ${data.type}`);
+    }
+  } catch (error) {
+    log("error", "Error in handleFlutterMessage:", error);
+    // 确保错误被抛出到 WebView
+    throw error;
+  }
 };
 
 // 导出函数类型

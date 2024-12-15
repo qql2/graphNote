@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
@@ -19,6 +20,7 @@ class GraphViewState extends State<GraphView> {
   WebViewController? _mobileController;
   windows_webview.WebviewController? _windowsController;
   bool _isWindows = false;
+  bool _graphInitialized = false;
 
   @override
   void initState() {
@@ -55,21 +57,106 @@ class GraphViewState extends State<GraphView> {
   Future<void> _initWindowsWebView() async {
     _windowsController = windows_webview.WebviewController();
     try {
+      print('Initializing Windows WebView...');
       await _windowsController!.initialize();
-      await _windowsController!.loadUrl('assets/web/graph.html');
+      print('Windows WebView initialized');
 
       // 设置Windows WebView的消息处理
       _windowsController!.webMessage.listen((dynamic message) {
+        print('Received message from WebView: $message');
         _handleJsMessage(JavaScriptMessage(message: message.toString()));
       });
-    } catch (e) {
-      print('Windows WebView initialization failed: $e');
+
+      // 获取资源路径
+      final htmlPath = 'assets/web/graph.html';
+      final jsPath = 'assets/web/dist/x6_graph.iife.js';
+      print('Loading resources...');
+
+      // 读取 HTML 和 JS 内容
+      final htmlContent = await rootBundle.loadString(htmlPath);
+      final jsContent = await rootBundle.loadString(jsPath);
+
+      // 构建完整的 HTML，包含内联的 JavaScript
+      final fullHtmlContent = '''
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>MindMap Graph</title>
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden;
+              }
+              #container {
+                width: 100%;
+                height: 100%;
+                background: #ffffff;
+                position: relative;
+                overflow: hidden;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="container"></div>
+            <script type="text/javascript">
+              ${jsContent}
+            </script>
+            <script type="text/javascript">
+              // 初始化图形
+              initGraph('container');
+              console.log('Graph initialized');
+            </script>
+          </body>
+        </html>
+      ''';
+
+      await _windowsController!.loadStringContent(fullHtmlContent);
+      print('HTML and JS loaded');
+
+      await _addTestNodes();
+      setState(() {
+        _graphInitialized = true;
+      });
+    } catch (e, stackTrace) {
+      print('Windows WebView error: $e');
+      print('Stack trace: $stackTrace');
     }
+  }
+
+  Future<void> _addTestNodes() async {
+    print('Adding test nodes...');
+    await addNode(
+      id: 'test-node-1',
+      x: 100,
+      y: 100,
+      label: 'Test Node 1',
+    );
+
+    await addNode(
+      id: 'test-node-2',
+      x: 300,
+      y: 100,
+      label: 'Test Node 2',
+    );
+
+    // 添加测试连线
+    await addEdge(
+      source: 'test-node-1',
+      target: 'test-node-2',
+    );
+    print('Test nodes and edge added');
   }
 
   void _handleJsMessage(JavaScriptMessage message) {
     final data = jsonDecode(message.message);
     switch (data['type']) {
+      case 'console':
+        print('WebView: ${data['payload']}');
+        break;
       case 'nodeAdded':
         _handleNodeAdded(data['payload']);
         break;
@@ -79,6 +166,8 @@ class GraphViewState extends State<GraphView> {
       case 'nodeMoved':
         _handleNodeMoved(data['payload']);
         break;
+      default:
+        print('Unknown event type: ${data['type']}');
     }
   }
 
@@ -99,7 +188,10 @@ class GraphViewState extends State<GraphView> {
 
   Future<void> _runJavaScript(String script) async {
     if (_isWindows) {
-      await _windowsController?.executeScript(script);
+      print('Running script on Windows: $script');
+      await _windowsController?.executeScript('''
+        ${script}
+      ''');
     } else {
       await _mobileController?.runJavaScript(script);
     }
@@ -122,7 +214,7 @@ class GraphViewState extends State<GraphView> {
       },
     });
 
-    await _runJavaScript('handleFlutterMessage(\'$message\')');
+    await _runJavaScript('handleFlutterMessage(${jsonEncode(message)})');
   }
 
   // 添加边的Flutter接口
@@ -138,7 +230,7 @@ class GraphViewState extends State<GraphView> {
       },
     });
 
-    await _runJavaScript('handleFlutterMessage(\'$message\')');
+    await _runJavaScript('handleFlutterMessage(${jsonEncode(message)})');
   }
 
   @override
@@ -147,7 +239,9 @@ class GraphViewState extends State<GraphView> {
       return const WebGraphView();
     }
     if (_isWindows) {
-      return windows_webview.Webview(_windowsController!);
+      return _graphInitialized
+          ? windows_webview.Webview(_windowsController!)
+          : const Center(child: CircularProgressIndicator());
     }
     if (Platform.isAndroid || Platform.isIOS) {
       return _mobileController == null
