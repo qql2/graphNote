@@ -37,15 +37,15 @@ class _WebGraphViewState extends State<WebGraphView> {
 
       // 先加载 X6
       print('Loading X6...');
-      _loadScript('https://unpkg.com/@antv/x6@1.1.1/dist/x6.js').then((_) {
-        print('X6 loaded, loading graph logic...');
-        // X6 加载完成后再加载我们的图形逻辑
-        html.HttpRequest.getString('assets/web/dist/x6_graph.iife.js')
-            .then((String jsContent) {
-          print('Graph logic loaded, length: ${jsContent.length}');
-          _injectScript(jsContent);
-          _setupGraph(containerId);
-        });
+      // _loadScript('https://unpkg.com/@antv/x6@1.1.1/dist/x6.js').then((_) {
+      //   print('X6 loaded, loading graph logic...');
+      //   // X6 加载完成后再加载我们的图形逻辑
+      // });
+      html.HttpRequest.getString('assets/web/dist/x6_graph.iife.js')
+          .then((String jsContent) {
+        print('Graph logic loaded, length: ${jsContent.length}');
+        _injectScript(jsContent);
+        _setupGraph(containerId);
       });
 
       return div;

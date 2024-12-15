@@ -9,7 +9,6 @@ export default defineConfig({
       fileName: "x6_graph",
     },
     rollupOptions: {
-      external: ["@antv/x6"],
       output: {
         globals: {
           "@antv/x6": "X6",

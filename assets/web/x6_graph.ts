@@ -70,21 +70,21 @@ window.initGraph = function (containerId: string): void {
         modifiers: ["ctrl", "meta"],
       },
     });
+    graph.on(
+      "node:moved",
+      ({ node, x, y }: { node: Node; x: number; y: number }) => {
+        window.onNodeMoved?.({
+          id: node.id,
+          position: { x, y },
+        });
+      }
+    );
     console.log("Graph initialized successfully:", graph);
   } catch (error) {
     console.error("Failed to initialize graph:", error);
   }
 
   // 监听图形事件
-  graph.on(
-    "node:moved",
-    ({ node, x, y }: { node: Node; x: number; y: number }) => {
-      window.onNodeMoved?.({
-        id: node.id,
-        position: { x, y },
-      });
-    }
-  );
 };
 
 // 添加节点
