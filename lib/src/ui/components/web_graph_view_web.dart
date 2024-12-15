@@ -81,46 +81,57 @@ class _WebGraphViewState extends State<WebGraphView> {
     final script = html.ScriptElement()
       ..type = 'text/javascript'
       ..text = content;
+    script.onLoad.listen((_) {
+      print('Script loaded successfully');
+    });
     html.document.head!.append(script);
   }
 
   void _setupGraph(String containerId) {
     print('Setting up graph...');
-    js.context['onNodeMoved'] = (dynamic data) {
-      if (data is js.JsObject) {
-        final id = data['id'];
-        final position = data['position'];
-        print('Node moved: $id to position: $position');
+    // 等待确保 JavaScript 代码已加载
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (js.context.hasProperty('initGraph')) {
+        js.context['onNodeMoved'] = (dynamic data) {
+          if (data is js.JsObject) {
+            final id = data['id'];
+            final position = data['position'];
+            print('Node moved: $id to position: $position');
+          } else {
+            print('Unexpected data type: ${data.runtimeType}');
+          }
+        };
+
+        // 初始化图形
+        print('Initializing graph with containerId: $containerId');
+        js.context.callMethod('initGraph', [containerId]);
+
+        // 添加测试节点
+        print('Adding test nodes...');
+        addNode(
+          id: 'test-node-1',
+          x: 100,
+          y: 100,
+          label: 'Test Node 1',
+        );
+
+        addNode(
+          id: 'test-node-2',
+          x: 300,
+          y: 100,
+          label: 'Test Node 2',
+        );
+
+        // 添加测试连线
+        addEdge(
+          source: 'test-node-1',
+          target: 'test-node-2',
+        );
       } else {
-        print('Unexpected data type: ${data.runtimeType}');
+        print('initGraph not found, retrying...');
+        _setupGraph(containerId); // 递归重试
       }
-    };
-
-    // 初始化图形
-    print('Initializing graph with containerId: $containerId');
-    js.context.callMethod('initGraph', [containerId]);
-
-    // 添加测试节点
-    print('Adding test nodes...');
-    addNode(
-      id: 'test-node-1',
-      x: 100,
-      y: 100,
-      label: 'Test Node 1',
-    );
-
-    addNode(
-      id: 'test-node-2',
-      x: 300,
-      y: 100,
-      label: 'Test Node 2',
-    );
-
-    // 添加测试连线
-    addEdge(
-      source: 'test-node-1',
-      target: 'test-node-2',
-    );
+    });
   }
 
   // 添加节点
