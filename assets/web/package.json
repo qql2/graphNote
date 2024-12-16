@@ -10,7 +10,7 @@
     "watch": "tsc && vite build --watch"
   },
   "devDependencies": {
-    "@antv/x6": "1.1.1",
+    "@antv/x6": "^2.x.x",
     "@types/node": "^22.10.2",
     "typescript": "^5.2.2",
     "vite": "^5.0.0"

@@ -76,14 +76,6 @@ window.initGraph = async function (containerId: string): Promise<void> {
       container,
       width: container.clientWidth,
       height: container.clientHeight,
-      translating: { restrict: false },
-      selecting: {
-        enabled: true,
-        multiple: true,
-        rubberband: true,
-        movable: true,
-        showNodeSelectionBox: true,
-      },
       grid: {
         visible: true,
         type: "dot",
@@ -92,42 +84,33 @@ window.initGraph = async function (containerId: string): Promise<void> {
           color: "#E2E2E2",
         },
       },
-      resizing: {
-        enabled: true,
-        autoScroll: true,
-      },
-      background: {
-        color: "#ffffff",
-      },
       connecting: {
         snap: true,
-        validateConnection: () => false,
+        allowBlank: false,
         highlight: true,
         connector: "smooth",
         connectionPoint: "boundary",
         router: {
-          name: "manhattan",
+          name: "er",
           args: {
-            padding: 1,
+            padding: 20,
           },
         },
       },
       interacting: {
         nodeMovable: true,
         edgeMovable: true,
-        edgeLabelMovable: true,
-        vertexMovable: true,
-        vertexAddable: true,
-        vertexDeletable: true,
         magnetConnectable: true,
       },
       mousewheel: {
         enabled: true,
         modifiers: [],
       },
-      scroller: {
+      panning: {
         enabled: true,
-        pannable: true,
+      },
+      background: {
+        color: "#ffffff",
       },
     });
 
@@ -174,25 +157,47 @@ window.addNode = function (nodeData: NodeData) {
         strokeWidth: 1,
         rx: 6,
         ry: 6,
-        magnet: true,
       },
       label: {
+        text: nodeData.label,
         fill: "#333",
         fontSize: 14,
         fontFamily: "Arial, helvetica, sans-serif",
-        textWrap: {
-          width: -10,
-          height: -10,
-          ellipsis: true,
+      },
+    },
+    ports: {
+      groups: {
+        in: {
+          position: "left",
+          attrs: {
+            circle: {
+              r: 4,
+              magnet: true,
+              stroke: "#8f8f8f",
+              fill: "#fff",
+            },
+          },
+        },
+        out: {
+          position: "right",
+          attrs: {
+            circle: {
+              r: 4,
+              magnet: true,
+              stroke: "#8f8f8f",
+              fill: "#fff",
+            },
+          },
         },
       },
+      items: [{ group: "in" }, { group: "out" }],
     },
   });
 
   log("info", "Node added successfully:", nodeData.id);
   return {
     id: node.id,
-    position: node.position(),
+    position: node.getPosition(),
   };
 };
 
@@ -214,9 +219,9 @@ window.addEdge = function (edgeData: EdgeData) {
       },
     },
     router: {
-      name: "manhattan",
+      name: "er",
       args: {
-        padding: 1,
+        padding: 20,
       },
     },
     connector: {
