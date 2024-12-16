@@ -1,4 +1,4 @@
-#include <flutter/dart_project.h>
+﻿#include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
@@ -31,6 +31,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
+
+  #if !DEBUG
+    // 禁用控制台窗口
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
+  #endif
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {

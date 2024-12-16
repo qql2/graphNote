@@ -2,7 +2,10 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>MindMap Graph</title>
     <!-- <link
       rel="stylesheet"
@@ -15,6 +18,9 @@
         padding: 0;
         height: 100%;
         overflow: hidden;
+        touch-action: none;
+        -ms-content-zooming: none;
+        -ms-touch-action: none;
       }
       #container {
         width: 100%;
@@ -22,6 +28,10 @@
         background: #ffffff;
         position: relative;
         overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
       }
     </style>
   </head>

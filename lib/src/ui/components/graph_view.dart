@@ -45,13 +45,34 @@ class GraphViewState extends State<GraphView> {
   Future<void> _initMobileWebView() async {
     _mobileController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadFlutterAsset('assets/web/graph.html')
       ..setBackgroundColor(Colors.white)
       ..addJavaScriptChannel(
         'GraphChannel',
         onMessageReceived: _handleJsMessage,
       );
-    await _mobileController!.loadFlutterAsset('assets/web/graph.html');
+
+    // 读取 HTML 和 JS 内容
+    final htmlPath = 'assets/web/graph.html';
+    final jsPath = 'assets/web/dist/x6_graph.iife.js';
+    final htmlContent = await rootBundle.loadString(htmlPath);
+    final jsContent = await rootBundle.loadString(jsPath);
+
+    // 将JS内容注入到HTML中
+    final modifiedHtmlContent = htmlContent.replaceFirst(
+      '</body>',
+      '''
+        <script type="text/javascript">
+          $jsContent
+        </script>
+        <script type="text/javascript">
+          initGraph('container');
+        </script>
+      </body>
+      ''',
+    );
+
+    await _mobileController!.loadHtmlString(modifiedHtmlContent);
+    await _addTestNodes();
   }
 
   Future<void> _initWindowsWebView() async {
@@ -63,60 +84,38 @@ class GraphViewState extends State<GraphView> {
 
       // 设置Windows WebView的消息处理
       _windowsController!.webMessage.listen((dynamic message) {
-        print('Received message from WebView: $message');
         _handleJsMessage(JavaScriptMessage(message: message.toString()));
       });
 
-      // 获取资源路径
+      // 读取资源
       final htmlPath = 'assets/web/graph.html';
       final jsPath = 'assets/web/dist/x6_graph.iife.js';
       print('Loading resources...');
 
-      // 读取 HTML 和 JS 内容
+      // 读取内容
       final htmlContent = await rootBundle.loadString(htmlPath);
       final jsContent = await rootBundle.loadString(jsPath);
 
-      // 构建完整的 HTML，包含内联的 JavaScript
-      final fullHtmlContent = '''
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>MindMap Graph</title>
-            <style>
-              html, body {
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                overflow: hidden;
-              }
-              #container {
-                width: 100%;
-                height: 100%;
-                background: #ffffff;
-                position: relative;
-                overflow: hidden;
-              }
-            </style>
-          </head>
-          <body>
-            <div id="container"></div>
-            <script type="text/javascript">
-              ${jsContent}
-            </script>
-            <script type="text/javascript">
-              // 初始化图形
-              initGraph('container');
-              console.log('Graph initialized');
-            </script>
-          </body>
-        </html>
-      ''';
+      // 先加载HTML
+      await _windowsController!.loadStringContent(htmlContent);
 
-      await _windowsController!.loadStringContent(fullHtmlContent);
+      // 等待DOM加载完成
+      await _windowsController!.executeScript('''
+        new Promise((resolve) => {
+          if (document.readyState === 'complete') {
+            resolve();
+          } else {
+            document.addEventListener('DOMContentLoaded', resolve);
+          }
+        })
+      ''');
+
+      // 注入X6代码
+      await _windowsController!.executeScript(jsContent);
       print('HTML and JS loaded');
 
+      // 初始化图形
+      await _windowsController!.executeScript("initGraph('container')");
       await _addTestNodes();
       setState(() {
         _graphInitialized = true;
@@ -155,6 +154,8 @@ class GraphViewState extends State<GraphView> {
     final data = jsonDecode(message.message);
     switch (data['type']) {
       case 'console':
+      case 'info':
+      case 'error':
         print('WebView: ${data['payload']}');
         break;
       case 'nodeAdded':
@@ -190,7 +191,15 @@ class GraphViewState extends State<GraphView> {
     if (_isWindows) {
       print('Running script on Windows: $script');
       await _windowsController?.executeScript('''
-        ${script}
+        (async () => {
+          try {
+            await ${script};
+            return true;
+          } catch (error) {
+            console.error('Script execution failed:', error);
+            return false;
+          }
+        })()
       ''');
     } else {
       await _mobileController?.runJavaScript(script);
@@ -246,7 +255,12 @@ class GraphViewState extends State<GraphView> {
     if (Platform.isAndroid || Platform.isIOS) {
       return _mobileController == null
           ? const Center(child: CircularProgressIndicator())
-          : WebViewWidget(controller: _mobileController!);
+          : Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: WebViewWidget(controller: _mobileController!),
+            );
     }
     return const Center(child: Text('Current platform is not supported yet'));
   }

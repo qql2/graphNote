@@ -1,0 +1,13 @@
+android {
+    defaultConfig {
+        // ...
+        minSdkVersion 19  // WebView 要求
+        // ...
+    }
+
+    // 允许使用 JavaScript
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+} 

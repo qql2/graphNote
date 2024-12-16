@@ -7,7 +7,7 @@ declare global {
       id: string;
       position: { x: number; y: number };
     }) => void;
-    initGraph: (containerId: string) => void;
+    initGraph: (containerId: string) => Promise<void>;
     addNode: (nodeData: NodeData) => any;
     addEdge: (edgeData: EdgeData) => any;
     chrome?: {
@@ -58,7 +58,7 @@ function log(type: "error" | "info" | "warn", ...args: any[]) {
   }
 }
 
-window.initGraph = function (containerId: string): void {
+window.initGraph = async function (containerId: string): Promise<void> {
   log("info", "initGraph", containerId);
   try {
     const container = document.getElementById(containerId);
@@ -123,7 +123,11 @@ window.initGraph = function (containerId: string): void {
       },
       mousewheel: {
         enabled: true,
-        modifiers: ["ctrl", "meta"],
+        modifiers: [],
+      },
+      scroller: {
+        enabled: true,
+        pannable: true,
       },
     });
 
@@ -252,8 +256,8 @@ window.handleFlutterMessage = function (message: string): void {
       default:
         throw new Error(`Unknown message type: ${data.type}`);
     }
-  } catch (error) {
-    log("error", "Error in handleFlutterMessage:", error);
+  } catch (error: any) {
+    log("error", "Error in handleFlutterMessage:", error.message);
     // 确保错误被抛出到 WebView
     throw error;
   }
