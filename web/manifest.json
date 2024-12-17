@@ -1,6 +1,6 @@
 {
-    "name": "mindmap_graph",
-    "short_name": "mindmap_graph",
+    "name": "graph_note_",
+    "short_name": "graph_note_",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
