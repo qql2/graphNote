@@ -1,4 +1,4 @@
-﻿#include <flutter/dart_project.h>
+#include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
@@ -27,15 +27,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"mindmap_graph", origin, size)) {
+  if (!window.Create(L"graph_note_", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
-
-  #if !DEBUG
-    // 禁用控制台窗口
-    ShowWindow(GetConsoleWindow(), SW_HIDE);
-  #endif
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {

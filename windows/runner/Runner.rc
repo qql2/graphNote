@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "mindmap_graph" "\0"
+            VALUE "FileDescription", "graph_note_" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "mindmap_graph" "\0"
+            VALUE "InternalName", "graph_note_" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "mindmap_graph.exe" "\0"
-            VALUE "ProductName", "mindmap_graph" "\0"
+            VALUE "OriginalFilename", "graph_note_.exe" "\0"
+            VALUE "ProductName", "graph_note_" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

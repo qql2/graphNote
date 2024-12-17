@@ -35,6 +35,18 @@ interface EdgeData {
   target: string;
 }
 
+// 在文件开头添加触摸相关的接口
+interface TouchState {
+  canvasBlank: boolean;
+  fingers: number;
+  isDragging: boolean;
+  isZooming: boolean;
+  lastTouchX: number;
+  lastTouchY: number;
+  initialDistance: number;
+  initialScale: number;
+}
+
 // 自定义日志函数，将日志发送到 Flutter
 function log(type: "error" | "info" | "warn", ...args: any[]) {
   const message = {
@@ -43,19 +55,34 @@ function log(type: "error" | "info" | "warn", ...args: any[]) {
       .map((arg) =>
         typeof arg === "object" ? JSON.stringify(arg) : String(arg)
       )
-      .join(" "),
+      .join("\n"),
   };
   if (window.chrome?.webview) {
     window.chrome.webview.postMessage(JSON.stringify(message));
   } else {
     if (type === "error") {
-      console.error(...args);
+      console.error(JSON.stringify(args, null, 2));
     } else if (type === "info") {
-      console.log(...args);
+      console.info(JSON.stringify(args, null, 2));
     } else if (type === "warn") {
-      console.warn(...args);
+      console.warn(JSON.stringify(args, null, 2));
     }
   }
+}
+
+// 添加防抖函数
+function debounce(func: Function): (...args: any[]) => void {
+  let timeout: number | null = null;
+  return function (...args: any[]) {
+    if (timeout !== null) {
+      window.cancelAnimationFrame(timeout);
+    }
+    timeout = window.requestAnimationFrame(() => {
+      // @ts-ignore
+      func.apply(this, args);
+      timeout = null;
+    });
+  };
 }
 
 window.initGraph = async function (containerId: string): Promise<void> {
@@ -109,9 +136,6 @@ window.initGraph = async function (containerId: string): Promise<void> {
       panning: {
         enabled: true,
       },
-      background: {
-        color: "#ffffff",
-      },
     });
 
     window.addEventListener("resize", () => {
@@ -128,6 +152,144 @@ window.initGraph = async function (containerId: string): Promise<void> {
       }
     );
     log("info", "Graph initialized successfully");
+
+    // 触摸状态
+    const touchState: TouchState = {
+      canvasBlank: false,
+      fingers: 0,
+      isDragging: false,
+      isZooming: false,
+      lastTouchX: 0,
+      lastTouchY: 0,
+      initialDistance: 0,
+      initialScale: 1,
+    };
+
+    // 计算两点之间的距离
+    const getDistance = (p1: Touch, p2: Touch) => {
+      const dx = p1.clientX - p2.clientX;
+      const dy = p1.clientY - p2.clientY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      log("info", "Touch distance:", distance);
+      return distance;
+    };
+
+    // 计算两点的中心点
+    const getMidPoint = (p1: Touch, p2: Touch) => {
+      const midPoint = {
+        x: (p1.clientX + p2.clientX) / 2,
+        y: (p1.clientY + p2.clientY) / 2,
+      };
+      log("info", "Touch midpoint:", midPoint);
+      return midPoint;
+    };
+
+    if (graph) {
+      // 监听空白区域的触摸开始
+      graph.on("blank:mousedown", (e) => {
+        touchState.canvasBlank = true;
+      });
+      graph.on("blank:mouseup", () => {
+        touchState.canvasBlank = false;
+      });
+
+      // 优化触摸移动处理函数
+      const handleTouchMove = debounce((e: TouchEvent) => {
+        if (!graph) return;
+        if (!touchState.canvasBlank) return;
+
+        if (touchState.isDragging && touchState.fingers === 1) {
+          log("info", "Touch move event");
+          const touch = e.touches[0];
+          const deltaX = touch.clientX - touchState.lastTouchX;
+          const deltaY = touch.clientY - touchState.lastTouchY;
+
+          graph.translateBy(deltaX, deltaY);
+
+          touchState.lastTouchX = touch.clientX;
+          touchState.lastTouchY = touch.clientY;
+        } else if (touchState.isZooming && touchState.fingers === 2) {
+          log("info", "scale");
+          const touch1 = e.touches[0];
+          const touch2 = e.touches[1];
+
+          const distance = getDistance(touch1, touch2);
+          const scale =
+            (distance / touchState.initialDistance) * touchState.initialScale;
+          const limitedScale = Math.min(Math.max(scale, 0.5), 3);
+          const center = getMidPoint(touch1, touch2);
+
+          log("info", "Zooming:", {
+            distance,
+            scale,
+            limitedScale,
+            center,
+            initialScale: touchState.initialScale,
+            initialDistance: touchState.initialDistance,
+          });
+
+          graph.zoom(limitedScale, {
+            absolute: true,
+            center: {
+              x: center.x,
+              y: center.y,
+            },
+          });
+        }
+
+        e.preventDefault();
+      });
+
+      // 监听触摸结束
+      const handleTouchEnd = () => {
+        log("info", "Touch end event:", {
+          previousState: {
+            isDragging: touchState.isDragging,
+            isZooming: touchState.isZooming,
+          },
+        });
+        touchState.isDragging = false;
+        touchState.isZooming = false;
+        touchState.fingers = 0;
+      };
+
+      // 优化事件监听器选项
+      if (container) {
+        container.addEventListener("touchstart", (e) => {
+          const touch = e;
+          touchState.fingers = touch.touches?.length;
+          if (touch.touches?.length === 1) {
+            touchState.isDragging = true;
+            touchState.lastTouchX = touch.touches[0].clientX;
+            touchState.lastTouchY = touch.touches[0].clientY;
+            log("info", "Single touch start:", {
+              x: touchState.lastTouchX,
+              y: touchState.lastTouchY,
+            });
+          } else if (touch.touches?.length === 2) {
+            touchState.isZooming = true;
+            touchState.initialDistance = getDistance(
+              touch.touches[0],
+              touch.touches[1]
+            );
+            touchState.initialScale = graph!.scale().sx;
+            log("info", "Pinch zoom start:", {
+              initialDistance: touchState.initialDistance,
+              initialScale: touchState.initialScale,
+            });
+          }
+        });
+        container.addEventListener("touchmove", handleTouchMove, {
+          passive: false,
+        });
+        container.addEventListener("touchend", handleTouchEnd, {
+          passive: true,
+        });
+        container.addEventListener("touchcancel", handleTouchEnd, {
+          passive: true,
+        });
+      }
+    }
   } catch (error) {
     log("error", "Failed to initialize graph:", error);
   }

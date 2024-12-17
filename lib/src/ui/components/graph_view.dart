@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 import 'dart:convert';
 import 'web_graph_view.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart' show Factory;
 
 // Windows平台支持
 import 'package:webview_windows/webview_windows.dart' as windows_webview;
@@ -46,6 +48,17 @@ class GraphViewState extends State<GraphView> {
     _mobileController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
+      ..enableZoom(false)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            _mobileController?.runJavaScript('''
+              document.body.style.overscrollBehavior = 'none';
+              document.documentElement.style.overscrollBehavior = 'none';
+            ''');
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'GraphChannel',
         onMessageReceived: _handleJsMessage,
@@ -57,21 +70,25 @@ class GraphViewState extends State<GraphView> {
     final htmlContent = await rootBundle.loadString(htmlPath);
     final jsContent = await rootBundle.loadString(jsPath);
 
-    // 将JS内容注入到HTML中
-    final modifiedHtmlContent = htmlContent.replaceFirst(
-      '</body>',
-      '''
-        <script type="text/javascript">
-          $jsContent
-        </script>
-        <script type="text/javascript">
-          initGraph('container');
-        </script>
-      </body>
-      ''',
-    );
+    // 先加载HTML
+    await _mobileController!.loadHtmlString(htmlContent);
 
-    await _mobileController!.loadHtmlString(modifiedHtmlContent);
+    // 等待DOM加载完成
+    await _mobileController!.runJavaScript('''
+      new Promise((resolve) => {
+        if (document.readyState === 'complete') {
+          resolve();
+        } else {
+          document.addEventListener('DOMContentLoaded', resolve);
+        }
+      })
+    ''');
+
+    // 注入X6代码
+    await _mobileController!.runJavaScript(jsContent);
+
+    // 初始化图形
+    await _mobileController!.runJavaScript("initGraph('container')");
     await _addTestNodes();
   }
 
@@ -259,7 +276,18 @@ class GraphViewState extends State<GraphView> {
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey[300]!),
               ),
-              child: WebViewWidget(controller: _mobileController!),
+              child: WebViewWidget(
+                controller: _mobileController!,
+                gestureRecognizers: {
+                  Factory<VerticalDragGestureRecognizer>(
+                      () => VerticalDragGestureRecognizer()),
+                  Factory<HorizontalDragGestureRecognizer>(
+                      () => HorizontalDragGestureRecognizer()),
+                  Factory<ScaleGestureRecognizer>(
+                      () => ScaleGestureRecognizer()),
+                  Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
+                },
+              ),
             );
     }
     return const Center(child: Text('Current platform is not supported yet'));
