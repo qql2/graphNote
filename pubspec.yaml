@@ -9,6 +9,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+  flutter_localizations:
+    sdk: flutter
 
   # 图数据库
   # 暂时注释掉 Neo4j，后续需要找到合适的图数据库实现

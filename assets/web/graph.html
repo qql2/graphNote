@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes"
     />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>MindMap Graph</title>
     <!-- <link
       rel="stylesheet"
@@ -32,6 +34,10 @@
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        -webkit-backface-visibility: hidden;
+        -webkit-perspective: 1000;
       }
     </style>
   </head>
